@@ -1,0 +1,7 @@
+A 10,000-patient database that contains in total 10,000 virtual patients, 36,143 admissions, and 10,726,505 lab observations.
+
+Download:
+https://figshare.com/articles/A_10_000-patient_database/7040060
+
+Alternative link:
+https://drive.google.com/open?id=10KPxYe0MnyJWNJC-mDdBEw_zSKOaHNKx
