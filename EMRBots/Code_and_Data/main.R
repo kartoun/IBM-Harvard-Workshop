@@ -5,6 +5,7 @@ library(plyr)
 library(dplyr)
 library(lubridate)
 
+#Change the folder locally:
 WORK_DIR = "C:/IBM/Harvard_Course_2019/EMRBots/Code/"
 
 #Let's read in our dataset into a data frame
