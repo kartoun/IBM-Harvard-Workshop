@@ -1,12 +1,14 @@
 #Propensity score matching in R
 
 #Let's set up our R environment
-rm(list = ls())
+rm(list = ls()) # Clean all varaibles.
+if(!is.null(dev.list())) dev.off() # Clean all plots.
 WORK_DIR = "C:/IBM/Harvard_Course_2019/Casualty/Code/"
 
 #Load packages
 library(tableone) # The tableone package is an R package that eases the construction of "Table 1", i.e., patient baseline characteristics table commonly found in biomedical research papers.
 library(MatchIt) # Selects matched samples of the original treated and control groups with similar covariate distributions.
+library(ggplot2) # A library that allows us to plot odds ratios.
 
 #Read the data:
 #http://biostat.mc.vanderbilt.edu/wiki/Main/DataSets
@@ -21,7 +23,7 @@ col_names = data.frame(colnames(rhc))
 ARF<-as.numeric(rhc$cat1 == 'ARF') #Acute renal failure
 CHF<-as.numeric(rhc$cat1 == 'CHF') #Congestive heart failure
 Cirr<-as.numeric(rhc$cat1 == 'Cirrhosis')
-colcan<-as.numeric(rhc$cat1 == 'Colon Cancer')
+#colcan<-as.numeric(rhc$cat1 == 'Colon Cancer')
 Coma<-as.numeric(rhc$cat1 == 'Coma')
 COPD<-as.numeric(rhc$cat1 == 'COPD')
 MOSF<-as.numeric(rhc$cat1 == 'MOSF w/Malignancy') #Multiple organ system failure
@@ -32,19 +34,38 @@ age<-rhc$age
 treatment<-as.numeric(rhc$swang1 == 'RHC')
 meanbp1<-rhc$meanbp1
 aps<-rhc$aps1 #APACHE score
-
 hrt1<-rhc$hrt1
+white<-as.numeric(rhc$race == 'white')
+black<-as.numeric(rhc$race == 'black')
+bili1<-rhc$bili1
+Estimated_MELD<- 10 * ((0.957 * log(rhc$crea1, 2.71828)) + (0.378 * log(rhc$bili1, 2.718)) + (1.12 * log(1.499619615, 2.718))) + 6.43
+
+L_Estimated_MELD_Plus = 8.53499496 + 2.06503238 * log10(1 + rhc$bili1) + 2.5967965 * log10(1 + rhc$crea1) - 6.34990436 * log10(1 + rhc$alb1) + 2.99724802 * log10(1 + 1.499619615) + 1.92811726 * log10(1 + rhc$wblc1) + 0.04070442 * rhc$age - 6.47834101 * log10(1 + rhc$sod1)
+Estimated_MELD_Plus = exp(L_Estimated_MELD_Plus) / (1 + exp(L_Estimated_MELD_Plus))
+
+liverhx<-as.numeric(rhc$liverhx)
+
 #Creating the dataset that we will use:
-mydata <- cbind(ARF, CHF, Cirr, colcan, Coma, MOSF, sepsis,
-             age, female, meanbp1, aps, hrt1, treatment, died)
+mydata <- cbind(ARF, CHF, Cirr, Coma, COPD, MOSF, sepsis,
+             age, female, meanbp1, aps, hrt1, white, black, bili1, Estimated_MELD, Estimated_MELD_Plus, liverhx, treatment, died)
 mydata = data.frame(mydata)
+
+#mydata <- mydata[ which(mydata$liverhx == '1'), ]
+
+#What is the prevalence of a variable? We want to remove covariates with
+#low prevalence (e.g., less than 1.0%, less than 5.0%)
+prev_of_a_variable_in_percent <- 100 * nrow(mydata[ which(mydata$Coma == '1'), ]) / nrow(mydata)
+prev_of_a_variable_in_percent
+
+#Action: remove "colcan" from the model as its prevalence is very small.
+
 #View(mydata)
 #dim(mydata)
 #summary(mydata)
 
 #Fitting a propensity score model:
-psmodel<-glm(treatment~ARF+CHF+Cirr+colcan+Coma+MOSF+
-               sepsis+age+female+meanbp1+aps+hrt1,
+psmodel<-glm(treatment~ARF+CHF+Cirr+Coma+COPD+MOSF+
+             sepsis+age+female+meanbp1+aps+hrt1+white+black+bili1+Estimated_MELD+Estimated_MELD_Plus+liverhx,
              family = binomial(), data = mydata)
 
 #Show coefficients. Who is more likely to get treated?
@@ -68,10 +89,11 @@ hist(df_untreated$pscore, xlim = c(0, 1), ylim = c(0, 400), col=rgb(1,0,0,1/4), 
 
 #Use matchit for propensity score, nearest neighbor matching
 #This function caclulates the propensity scores and then match them
-m.out = matchit(treatment~ARF+CHF+Cirr+colcan+Coma+MOSF+
-                  sepsis+age+female+meanbp1+aps+hrt1
-                 , data = mydata, method = "nearest") # Another method is called "optimal".
+m.out = matchit(treatment~ARF+CHF+Cirr+Coma+COPD+MOSF+
+                  sepsis+age+female+meanbp1+aps+hrt1+white+black+bili1+Estimated_MELD+Estimated_MELD_Plus+liverhx
+                 , data = mydata, method = "nearest") # Possible methods: "optimal", "nearest", etc.
 
+#Let's look at the populations before and after matching:
 summary(m.out)
 
 #propensity score plots
@@ -82,22 +104,23 @@ plot(m.out, type = "hist")
 
 #Get ids of treated and matched untreated:
 match_matrix = data.frame(m.out$match.matrix)
+match_matrix
 
 #Example 1:
 
 #Treated:
-mydata[5729,]
+mydata[2704,]
 
 #Matched untreared:
-mydata[1909,]
+mydata[1258,]
 
 #Example 2:
 
 #Treated:
-mydata[5726,]
+mydata[2700,]
 
 #Matched untreared:
-mydata[4276,]
+mydata[3495,]
 
 ############################################
 
@@ -105,30 +128,34 @@ mydata[4276,]
 
 library(Matching)
 
-#mydata <- mydata[ which(mydata$female == '1' 
-#                        & mydata$age > 65
-#                        & mydata$Cirr == '1'), ]
-
-#mydata <- mydata[ which(mydata$female == '0'), ]
-
-psmodel<-glm(treatment~ARF+CHF+Cirr+colcan+Coma+MOSF+
-               sepsis+age+female+meanbp1+aps+hrt1,
+psmodel<-glm(treatment~ARF+CHF+Cirr+Coma+COPD+MOSF+
+             sepsis+age+female+meanbp1+aps+hrt1+white+black+bili1+Estimated_MELD+Estimated_MELD_Plus+liverhx,
              family = binomial(), data = mydata)
 
-#Get propensity scores:
+#Get propensity scores for each patient:
 pscore=predict(psmodel, mydata, type="response", na.action = na.pass)
+#pscore
 
 #do greedy matching on logit(PS)
 
 logit_pscore = log(pscore / (1 - pscore))
 
-#psmatch = Match(Tr = mydata$treatment, M = 1, X = logit_pscore, replace = FALSE)
-psmatch = Match(Tr = mydata$treatment, M = 1, X = logit_pscore, replace = FALSE, caliper = 0.2)
+psmatch = Match(Tr = mydata$treatment, M = 1, X = logit_pscore, replace = FALSE)
+#psmatch = Match(Tr = mydata$treatment, M = 1, X = logit_pscore, replace = FALSE, caliper = 0.2)
+
+#Here is an example for an exact match. Use, for example, X = age + female or just X = female.
+#psmatch = Match(Tr = mydata$treatment, M = 1, X = age, replace = FALSE)
 
 #The following is the final data frame that contains cases and their correspoding matched controls.
 matched <- mydata[unlist(psmatch[c("index.treated", "index.control")]), ]
 
-xvars <- c("ARF", "CHF", "Cirr", "colcan", "Coma", "MOSF", "sepsis", "age", "female", "meanbp1", "aps", "hrt1")
+#Let's take a look at the age distributions for treated vs. untreated.
+ages_treated = matched[ which(mydata$treatment == '1'), ]$age
+ages_untreated = matched[ which(mydata$treatment == '0'), ]$age
+#hist(ages_treated)
+#hist(ages_untreated)
+
+xvars <- c("ARF", "CHF", "Cirr", "Coma", "COPD", "MOSF", "sepsis", "age", "female", "meanbp1", "aps", "hrt1", "white", "black", "bili1", "Estimated_MELD", "Estimated_MELD_Plus", "liverhx")
 
 tab1_before_matching = CreateTableOne(vars = xvars, strata = "treatment"
                       , data = mydata, test = FALSE)
@@ -143,19 +170,16 @@ print(tab1_after_matching, smd = TRUE)
 #Using a caliper:
 #Add "caliper = .2" to the line starting with "psmatch" above.
 #What is "0.2"? Answer: 0.2 standard deviation units.
+#See what standard mean difference (SMD) is: https://handbook-5-1.cochrane.org/chapter_9/9_2_3_2_the_standardized_mean_difference.htm
 #Standard mean deviation threshold of 0.1 is an acceptable threshold.
 
-final_model <- glm(died ~ treatment+ARF+CHF+Cirr+colcan+Coma+MOSF+
-               sepsis+age+female+meanbp1+aps+hrt1,
+final_model <- glm(died ~ treatment+ARF+CHF+Cirr+Coma+COPD+MOSF+
+               sepsis+age+female+meanbp1+aps+hrt1+white+black+bili1+Estimated_MELD+Estimated_MELD_Plus+liverhx,
                family = binomial(), data = matched)
 
-
-#final_model <- glm(died ~ treatment+ARF+CHF+Cirr+colcan+Coma+MOSF+
-#                     sepsis+age+female+meanbp1+aps+hrt1,
-#                   family = binomial(), data = mydata)
-
-# plot odds ratios
-library(ggplot2)
+#final_model <- glm(died ~ treatment+ARF+CHF+Cirr+Coma+COPD+MOSF+
+#               sepsis+age+female+meanbp1+aps+hrt1+white+black+bili1+Estimated_MELD+Estimated_MELD_Plus+liverhx,
+#               family = binomial(), data = mydata)
 
 results = data.frame(summary(final_model)$coefficients)
 results$Estimate = exp(results$Estimate)
@@ -172,6 +196,7 @@ df_ORs_Conf_Int_sorted = df_ORs_Conf_Int[order(-results$Estimate), ]
 row.names(df_ORs_Conf_Int_sorted)
 
 df_ORs_Conf_Int_sorted = df_ORs_Conf_Int_sorted[!(row.names(df_ORs_Conf_Int_sorted) == '(Intercept)'), ]
+df_ORs_Conf_Int_sorted
 
 boxLabels = rownames(df_ORs_Conf_Int_sorted)
 
@@ -198,11 +223,17 @@ p + geom_vline(aes(xintercept = 1.0), size = .25, linetype = "dashed") +
         axis.text.y = element_text(face = "bold", size = 10),
         axis.title = element_text(face = "bold", size = 10))
 
-dev.copy(jpeg, filename = 'Atrius_HTN_odds_ratio_plot.jpg', width = 1440, height = 900);
+dev.copy(jpeg, filename = 'Odds_Ratio_Plot.jpg', width = 1440, height = 900);
 dev.off()
 
+df_ORs_Conf_Int_sorted
 ########################################################################
 
+#Additional code to help advance the projetcs:
 
-
+#mydata <- mydata[ which(mydata$female == '1' 
+#                        & mydata$age > 65
+#                        & mydata$Cirr == '1'), ]
+  
+#mydata <- mydata[ which(mydata$female == '0'), ]  
 
