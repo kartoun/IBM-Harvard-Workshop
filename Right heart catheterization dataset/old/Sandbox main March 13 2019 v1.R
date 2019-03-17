@@ -136,8 +136,6 @@ psmodel<-glm(treatment~ARF+CHF+Cirr+Coma+COPD+MOSF+
 pscore=predict(psmodel, mydata, type="response", na.action = na.pass)
 #pscore
 
-#do greedy matching on logit(PS)
-
 logit_pscore = log(pscore / (1 - pscore))
 
 psmatch = Match(Tr = mydata$treatment, M = 1, X = logit_pscore, replace = FALSE)
