@@ -1,0 +1,6 @@
+An on-line course: "Design and Interpretation of Clinical Trials": https://www.coursera.org/learn/clinical-trials/
+
+An on-line course: "A Crash Course in Causality: Inferring Causal Effects from Observational Data": https://www.coursera.org/learn/crash-course-in-causality
+
+A book: "Clinical Epidemiology: The Essentials Fifth Edition" / Robert H. Fletcher, Suzanne W. Fletcher, Grant S. Fletcher
+
