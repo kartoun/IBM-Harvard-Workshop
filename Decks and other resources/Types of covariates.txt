@@ -1,0 +1,28 @@
+[Captured from a Uri's "under review" manuscript as of March 2019]:
+
+The variety of covariate types could be categorized into classes, ranked by their level of ease in
+collection and construction.
+
+Covariates collected by looking at the patient, such as gender or race, are the easiest
+to capture because they require neither any interaction with the patient nor any measurements or calculations.
+
+Covariates such as age, marital status, mood status, pain level, alcohol use, and tobacco use require only
+minimal interaction with the patient. Capturing covariates such as weight, height, and blood pressure can be
+accomplished within a few minutes because they require the use of easily accessible equipment available in any
+physician’s office.
+
+At an intermediate level of complexity are the patient’s laboratory test results (such as
+creatinine, hemoglobin, and glucose)—such covariates require analysis of urine or blood samples by an external
+laboratory with more advanced measurement devices than those found in a standard outpatient setting.
+Processing measurements stored in the EMR can be challenging given the heterogeneity of measurement units
+and reference values that are often unique to a certain measurement.
+
+Of a higher complexity are covariates representing the genetic profile of the patient, often requiring an external specialized laboratory and associated with high costs to process.
+
+Another set of covariates commonly used to classify and predict patient outcomes include those
+extracted from clinical narrative notes (such as progress notes, operation notes, and discharge summaries)—
+such covariates require the use of advanced NLP and machine leaning algorithms and often require timeconsuming manual chart reviews, typically performed by physicians and nurses.
+
+Additional covariates rely on the use of wearable devices that are often integrated with the patient’s EMR—such
+covariates require the application of advanced time series classification techniques on the collected data that
+represent large collections of continuous and often noisy values.
